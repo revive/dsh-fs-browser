@@ -1,0 +1,9 @@
+# dsh-fs-browser bundle layer: inserts the file-browser plugin into a
+# composition. This file is the `dsh.bundle.patch` of the published bundle —
+# `dsh plugin add dsh-fs-browser` applies it as a layer, and the row references
+# the package by name. The same file doubles as the --patch dev overlay.
+# No secrets live here: per-workspace UI state is kept in each workspace's
+# `.worx-state.json`, separate from this patch.
+- insert:
+    - id: dsh-fs-browser
+      name: 'dsh-fs-browser'
