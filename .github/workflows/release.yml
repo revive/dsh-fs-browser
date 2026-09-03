@@ -1,0 +1,65 @@
+name: build-release
+
+# 推送 v* 标签（如 v0.1.0 / v0.1.1）时触发：在云端重新构建浏览器包、
+# 按标签版本号打包 tarball，并自动创建/更新该标签的 GitHub release 并挂上附件。
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Set package version from tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ -z "$TAG" ]; then
+            echo "::error::tag must look like v<semver>, got ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+          node -e "
+            const fs = require('node:fs')
+            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+            p.version = process.argv[1]
+            fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n')
+          " "$TAG"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pnpm install --prefer-offline
+
+      - name: Build browser bundle and host half
+        run: pnpm build
+
+      - name: Pack tarball
+        run: |
+          pnpm pack
+          ls -la dsh-fs-browser-*.tgz
+
+      - name: Create release and upload tarball
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TARBALL="dsh-fs-browser-${TAG}.tgz"
+          if gh release create "$GITHUB_REF_NAME" "$TARBALL" --generate-notes --verify-tag 2>/dev/null; then
+            echo "release created with tarball"
+          else
+            gh release upload "$GITHUB_REF_NAME" "$TARBALL" --clobber
+            echo "release already existed; tarball uploaded"
+          fi

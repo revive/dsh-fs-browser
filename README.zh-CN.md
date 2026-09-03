@@ -105,11 +105,12 @@ Host（lib/index.js，纯 JS；仅依赖 storage-domain + zod）
 
 ```sh
 pnpm install              # 拉取开发工具链（tsdown、shiki、typescript）
-pnpm run build:client     # tsdown 把 src/client.ts 连同 Shiki 打包成 lib/client.js
+pnpm build                # build:host 把 src/index.js 拷到 lib/index.js，
+                          # 再由 build:client 把 Shiki 打包进 lib/client.js
 pnpm pack                 # -> dsh-fs-browser-<version>.tgz
 ```
 
-- **Host 半**（`lib/index.js`）是手写纯 JS——原位改，无需构建
+- **Host 半**（`src/index.js`）是手写纯 JS——`pnpm run build:host` 会拷到 `lib/index.js`；改 `src/index.js`，不要改 `lib/`
 - **Client 半**（`src/client.ts`）由 tsdown 构建：`react` 保持 external（页面 `require('react')`），其余（Shiki 与语法）全部内联
 - 运行中的 GUI 按内容哈希 rev 服务 `lib/client.js`——重建后刷新页面（或重启 GUI）即生效；Host 侧改动需重启 GUI
 - 快速迭代时也可借任何已装有 `shiki` 的上下文构建（如 `packages/client/ui-primitives/node_modules`）——产物一致
@@ -124,8 +125,11 @@ dsh-fs-browser/
   tsdown.config.ts        # 自包含客户端构建（ModuleLoader 闭包包装）
   tsconfig.json           # 客户端 TS 编译选项
   src/client.ts           # 浏览器半：面板组件 + Shiki 高亮
-  lib/index.js            # Host 半（手写纯 JS）：/worx-file + /worx-api 路由
+  src/index.js            # Host 半（手写纯 JS）：/worx-file + /worx-api 路由
+                          #   + fs_browser 存储域；由 build:host 拷到 lib/index.js
+  lib/index.js            # 构建产物（Host 拷贝，gitignored）
   lib/client.js           # 构建产物（Shiki 内联，gitignored）
+  .github/workflows/release.yml   # tag v* → 云端构建 + 打包 + release + 挂 tarball
   README.md / README.zh-CN.md
   LICENSE                 # MIT
 ```
@@ -134,14 +138,13 @@ dsh-fs-browser/
 
 包按 dsh **bundle** 形态组织——用户 `dsh plugin --profile <name> add dsh-fs-browser` 即可安装并进入 profile 的 bundle 分层。`peerDependencies` 保持极简（`react`、`@deepseek-ai/dsh-storage-domain`、`zod`）：这两个运行时包从安装环境的共享扁平回退（`$DSH_HOME/profiles/node_modules`）解析，浏览器半自含 Shiki。
 
-**每个 GitHub release 都附带打包 tarball**——这是当前分发通道：
+**每个 GitHub release 都附带打包 tarball**。仓库内置的 GitHub Action（`.github/workflows/release.yml`，在 `v*` 标签时触发）使其全自动：推送 `v<版本>` 标签后，工作流会检出该标签、把 `package.json` 版本设为标签版本、云端构建浏览器包与 Host 半、打包 `dsh-fs-browser-<version>.tgz`、创建（或更新）release 并上传 tarball——无需本地构建。
 
 ```sh
-pnpm build
-pnpm pack                  # -> dsh-fs-browser-<version>.tgz
+git tag v0.1.1 && git push origin v0.1.1   # 工作流自动产出 dsh-fs-browser-0.1.1.tgz release
 ```
 
-把 tarball 附加到 release（或在本地安装验证）：
+本地等价步骤为 `pnpm build && pnpm pack`。用户安装 tarball：
 
 ```sh
 dsh plugin --profile <name> add ./dsh-fs-browser-<version>.tgz

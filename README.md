@@ -105,11 +105,12 @@ Prerequisites: a clone of [deepseek-harness](https://github.com/deepseek-ai/deep
 
 ```sh
 pnpm install              # pulls the dev toolchain (tsdown, shiki, typescript)
-pnpm run build:client     # tsdown bundles src/client.ts with Shiki into lib/client.js
+pnpm build                # build:host copies src/index.js → lib/index.js,
+                          # then build:client bundles Shiki into lib/client.js
 pnpm pack                 # -> dsh-fs-browser-<version>.tgz
 ```
 
-- **Host half** (`lib/index.js`) is hand-written plain JS — edit in place, no build
+- **Host half** (`src/index.js`) is hand-written plain JS — `pnpm run build:host` copies it to `lib/index.js`; edit `src/index.js`, never `lib/`
 - **Client half** (`src/client.ts`) is TS built by tsdown: `react` stays an external (`require('react')` from the page), everything else (Shiki + grammars) is inlined
 - The running GUI serves the client bundle from `lib/client.js` with a content-hash rev — after a rebuild, a page refresh (or a GUI restart) picks it up; host-side changes need a GUI restart
 - For quick iteration you can build against any context that already has `shiki` installed (e.g., `packages/client/ui-primitives/node_modules`) — the bundle contents are identical
@@ -124,8 +125,11 @@ dsh-fs-browser/
   tsdown.config.ts        # self-contained client build (ModuleLoader closure wrapper)
   tsconfig.json           # client TS compilation options
   src/client.ts           # browser half: panel components + Shiki highlight
-  lib/index.js            # host half (hand-written plain JS): /worx-file + /worx-api routes
+  src/index.js            # host half (hand-written plain JS): /worx-file + /worx-api routes
+                          #   + the fs_browser storage domain; copied to lib/index.js by build:host
+  lib/index.js            # build output (host copy, gitignored)
   lib/client.js           # build output (Shiki inlined, gitignored)
+  .github/workflows/release.yml   # tag v* → cloud build + pack + release + tarball
   README.md / README.zh-CN.md
   LICENSE                 # MIT
 ```
@@ -134,14 +138,13 @@ dsh-fs-browser/
 
 The package is shaped as a dsh **bundle** — `dsh plugin --profile <name> add dsh-fs-browser` installs it and joins the profile's bundle layers. `peerDependencies` stays minimal (`react`, `@deepseek-ai/dsh-storage-domain`, `zod`): the two runtime packages resolve from the installation's shared flat fallback (`$DSH_HOME/profiles/node_modules`), and the browser half inlines its own Shiki.
 
-**Every GitHub release attaches the packed tarball** — that is the current distribution channel:
+**Every GitHub release attaches the packed tarball.** The included GitHub Action (`.github/workflows/release.yml`, on `v*` tags) makes this automatic: push a `v<version>` tag, and the workflow checks out the tag, sets `package.json` to the tag version, builds the browser bundle and host half, packs `dsh-fs-browser-<version>.tgz`, creates (or updates) the release and uploads the tarball — no local build required.
 
 ```sh
-pnpm build
-pnpm pack                  # -> dsh-fs-browser-<version>.tgz
+git tag v0.1.1 && git push origin v0.1.1   # workflow builds + releases dsh-fs-browser-0.1.1.tgz
 ```
 
-Attach the tarball to the release (or install it locally):
+Locally, the same steps are `pnpm build && pnpm pack`. Users install the tarball with:
 
 ```sh
 dsh plugin --profile <name> add ./dsh-fs-browser-<version>.tgz

@@ -1,6 +1,6 @@
 {
   "name": "dsh-fs-browser",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "DSH workspace file browser: an embedded right-side file column sharing the frame with the conversation — file list, Shiki-powered text preview with line numbers, image preview, copy-on-select, and per-workspace remembered state.",
   "type": "module",
   "main": "lib/index.js",
@@ -22,8 +22,9 @@
     "LICENSE"
   ],
   "scripts": {
+    "build:host": "cp src/index.js lib/index.js",
     "build:client": "tsdown -c tsdown.config.ts",
-    "build": "pnpm build:client",
+    "build": "pnpm build:host && pnpm build:client",
     "pack": "pnpm pack"
   },
   "dsh": {
