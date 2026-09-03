@@ -15,8 +15,8 @@ The browser column is an *embedded* layout column, not a floating overlay — it
 - **Shiki syntax highlighting** — the same synchronous shiki core (JS-regex engine, css-variables theme) the product's read cards use; 23 grammars bundled (ts/js/jsx, bash, json, python, yaml, sql, c/cpp, cs, java, go, rust, css, html/xml, markdown, ruby, perl, lua, elisp, haskell, julia, php, toml, ini); unknown/absent languages degrade to a built-in lightweight tokenizer — never an error
 - **Line numbers + copy-on-select** — line-number gutter that stays out of your selection; select text in the preview and a floating **复制** button appears; copies the exact visible text
 - **Image preview** — inline preview for png/jpg/gif/webp/svg/bmp (≤2 MB base64 fallback, ≤8 MB via a same-origin HTTP route)
-- **Per-workspace memory** — the open directory and whether the column is expanded are persisted per workspace in `<workspace>/.worx-state.json`, restored when you enter that workspace's session; delete the file to reset
-- **Prebuilt, dependency-free install** — the browser bundle ships with Shiki inlined (`lib/client.js`, prebuilt); the host half is plain JS with zero `@deepseek-ai` imports
+- **Per-workspace memory** — the open directory and whether the column is expanded are persisted in a durable storage **domain** (`~/.dsh/storages/fs_browser.json`, keyed by workspace id), restored when you enter that workspace's session
+- **Prebuilt, dependency-free install** — the browser bundle ships with Shiki inlined (`lib/client.js`, prebuilt); the host half is plain JS whose only `@deepseek-ai` dependency is `storage-domain`
 
 ## Installation
 
@@ -88,16 +88,16 @@ browser client bundle (Shiki inlined, ModuleLoader closure)
   ├─ GET  /worx-file?p=<path>  ──> raw file bytes (image preview, ≤8 MB)
   └─ POST /worx-api            ──> { op: list | read | state, args }
                                       │
-host lib/index.js (plain JS, zero @deepseek-ai imports)
-  └─ ctx.fs (fs-sandbox): listDir / readText+readBytes / state
-        state writes stamp { mode: 'workspace-write', workspaceRoot } — the
-        per-call policy fs-sandbox requires for any mutation
-per-workspace state: <workspace>/.worx-state.json (hidden from the listing)
+host lib/index.js (plain JS; only deps: storage-domain + zod)
+  ├─ ctx.fs (fs-sandbox): listDir / readText+readBytes
+  └─ ctx.storageDomain: domain 'fs_browser', table 'state'
+       (durable backend writes ~/.dsh/storages/fs_browser.json — no sandbox policy)
+per-workspace state keyed by workspace id. Legacy per-workspace .worx-state.json
+  files are imported once at first boot, kept, and hidden from the listing.
 ```
 
 - The client plugin (`dsh.client` + `exports["./client"]`) registers the `details` seat at `priority: -100` (shadows the built-in tool-details panel) and the header toggle
-- The host row declares `inject: ['fs', 'webServer']` so it never activates before those services exist
-- `.worx-state.json` is filtered out of the file list
+- The host row declares `inject: ['fs', 'webServer', 'storageDomain']` so it never activates before those services exist
 
 ## Development
 
@@ -132,7 +132,7 @@ dsh-fs-browser/
 
 ## Publishing
 
-The package is shaped as a dsh **bundle** — `dsh plugin --profile <name> add dsh-fs-browser` installs it and joins the profile's bundle layers. `peerDependencies` stays minimal (`react`); the harness runtime resolves nothing else at load time because the host half has no `@deepseek-ai` imports and the browser half inlines its own Shiki.
+The package is shaped as a dsh **bundle** — `dsh plugin --profile <name> add dsh-fs-browser` installs it and joins the profile's bundle layers. `peerDependencies` stays minimal (`react`, `@deepseek-ai/dsh-storage-domain`, `zod`): the two runtime packages resolve from the installation's shared flat fallback (`$DSH_HOME/profiles/node_modules`), and the browser half inlines its own Shiki.
 
 **Every GitHub release attaches the packed tarball** — that is the current distribution channel:
 

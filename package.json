@@ -40,7 +40,9 @@
     }
   },
   "peerDependencies": {
-    "react": "*"
+    "@deepseek-ai/dsh-storage-domain": "*",
+    "react": "*",
+    "zod": "*"
   },
   "devDependencies": {
     "@shikijs/langs": "^4.3.1",

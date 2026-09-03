@@ -15,8 +15,8 @@
 - **Shiki 语法高亮**——与产品 read 卡片同引擎（同步 JS 正则引擎 + css-variables 主题）；已内置 23 种语法（ts/js/jsx、bash、json、python、yaml、sql、c/cpp、cs、java、go、rust、css、html/xml、markdown、ruby、perl、lua、elisp、haskell、julia、php、toml、ini）；未知/缺失语法自动降级到内置轻量分词器——绝不报错
 - **行号 + 选中复制**——行号列不进入你的选区；预览区选中文本即浮出「复制」按钮，复制原文（不含行号）
 - **图片预览**——png/jpg/gif/webp/svg/bmp（≤2MB base64 回退，≤8MB 走同源 HTTP 路由）
-- **按工作区记忆**——打开的目录与是否展开写入 `<工作区>/.worx-state.json`，进入对应工作区会话时自动恢复；删除该文件即重置
-- **免构建分发**——浏览器半携带内联 Shiki 的预构建产物（`lib/client.js`）；Host 半是纯 JS、零 `@deepseek-ai` 导入
+- **按工作区记忆**——打开的目录与是否展开写入持久化 storage **域**（`~/.dsh/storages/fs_browser.json`，按 workspaceId 为键），进入对应工作区会话时自动恢复
+- **免构建分发**——浏览器半携带内联 Shiki 的预构建产物（`lib/client.js`）；Host 半是纯 JS，仅依赖 `storage-domain`（+ `zod`）
 
 ## 安装
 
@@ -88,16 +88,16 @@ dsh --profile <name> --dump-config    # 查找 "# == dsh-fs-browser"
   ├─ GET  /worx-file?p=<path>  ──> 原始文件字节（图片预览，≤8 MB）
   └─ POST /worx-api            ──> { op: list | read | state, args }
                                       │
-Host（lib/index.js，纯 JS、零 @deepseek-ai 导入）
-  └─ ctx.fs（fs-sandbox）：listDir / readText+readBytes / state
-        写状态时显式盖章 { mode: 'workspace-write', workspaceRoot }——
-        fs-sandbox 对任何写入所要求的 per-call 策略
-按工作区状态：<工作区>/.worx-state.json（列表内隐藏）
+Host（lib/index.js，纯 JS；仅依赖 storage-domain + zod）
+  ├─ ctx.fs（fs-sandbox）：listDir / readText+readBytes
+  └─ ctx.storageDomain：域 'fs_browser'，表 'state'
+       （持久后端写入 ~/.dsh/storages/fs_browser.json——不经 fs-sandbox）
+按工作区状态以 workspaceId 为键。旧版工作区内 .worx-state.json 会在首次启动时
+  一次性导入，之后保留并隐藏于文件列表。
 ```
 
 - 客户端插件（`dsh.client` + `exports["./client"]`）以 `priority: -100` 注册 `details` 座位（遮蔽内置工具详情面板）与头部开关
-- Host 行声明 `inject: ['fs', 'webServer']`，保证在这些服务就绪前不会激活
-- `.worx-state.json` 从文件列表过滤掉
+- Host 行声明 `inject: ['fs', 'webServer', 'storageDomain']`，保证在这些服务就绪前不会激活
 
 ## 开发
 
@@ -132,7 +132,7 @@ dsh-fs-browser/
 
 ## 发布
 
-包按 dsh **bundle** 形态组织——用户 `dsh plugin --profile <name> add dsh-fs-browser` 即可安装并进入 profile 的 bundle 分层。`peerDependencies` 保持极简（`react`）：Host 半零 `@deepseek-ai` 导入、浏览器半自含 Shiki，运行时无需其它解析。
+包按 dsh **bundle** 形态组织——用户 `dsh plugin --profile <name> add dsh-fs-browser` 即可安装并进入 profile 的 bundle 分层。`peerDependencies` 保持极简（`react`、`@deepseek-ai/dsh-storage-domain`、`zod`）：这两个运行时包从安装环境的共享扁平回退（`$DSH_HOME/profiles/node_modules`）解析，浏览器半自含 Shiki。
 
 **每个 GitHub release 都附带打包 tarball**——这是当前分发通道：
 
