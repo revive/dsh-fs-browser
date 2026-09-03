@@ -54,6 +54,14 @@
     "typescript": "^6.0.3"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/revive/dsh-fs-browser.git"
+  },
+  "homepage": "https://github.com/revive/dsh-fs-browser",
+  "bugs": {
+    "url": "https://github.com/revive/dsh-fs-browser/issues"
+  },
   "keywords": [
     "dsh",
     "plugin",
