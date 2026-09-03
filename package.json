@@ -23,7 +23,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build:host": "cp src/index.js lib/index.js",
+    "build:host": "mkdir -p lib && cp src/index.js lib/index.js",
     "build:client": "tsdown -c tsdown.config.ts",
     "build": "pnpm build:host && pnpm build:client",
     "pack": "pnpm pack"
