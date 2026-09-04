@@ -14,9 +14,11 @@ The browser column is an *embedded* layout column, not a floating overlay — it
 
 - **Embedded right column, side by side with the chat** — registered in the layout's `details` seat; toggle from the session header（📁 文件）, collapse with the panel's ⏴; drag the column edge to widen up to half the viewport (see [Layout prerequisites](#layout-prerequisites))
 - **Shiki syntax highlighting** — the same synchronous shiki core (JS-regex engine, css-variables theme) the product's read cards use; 23 grammars bundled (ts/js/jsx, bash, json, python, yaml, sql, c/cpp, cs, java, go, rust, css, html/xml, markdown, ruby, perl, lua, elisp, haskell, julia, php, toml, ini); unknown/absent languages degrade to a built-in lightweight tokenizer — never an error
-- **Line numbers + copy-on-select** — line-number gutter that stays out of your selection; select text in the preview and a floating **复制** button appears; copies the exact visible text
-- **Image preview** — inline preview for png/jpg/gif/webp/svg/bmp (≤2 MB base64 fallback, ≤8 MB via a same-origin HTTP route)
+- **Line numbers + copy-on-select** — line-number gutter that stays out of your selection; select text in the preview and a floating **📋 copy button** appears (✓ when copied); copies the exact visible text
+- **Bilingual UI** — every label follows the app's language setting (中文 / English) via the product's locale dictionary mechanism, with no restart
+- **Image preview** — inline preview for png/jpg/gif/webp/svg/bmp (≤2 MB base64 fallback, ≤8 MB via a same-origin HTTP route); binary files show a type + size hint instead of an error (name stays in the preview header)
 - **Per-workspace memory** — the open directory and whether the column is expanded are persisted in a durable storage **domain** (`~/.dsh/storages/fs_browser.json`, keyed by workspace id), restored when you enter that workspace's session
+- **Cross-platform paths** — Windows (`C:\…`) and POSIX paths both navigate correctly; the host tolerates locked system files when listing directories (e.g. `C:\DumpStack.log`)
 - **Prebuilt, dependency-free install** — the browser bundle ships with Shiki inlined (`lib/client.js`, prebuilt); the host half is plain JS whose only `@deepseek-ai` dependency is `storage-domain`
 
 ## Installation
@@ -73,8 +75,8 @@ Restart the GUI (`pnpm dsh web --no-open`) and open the freshly printed URL. Uni
 Open the 📁 文件 toggle in the session header (or let it reopen automatically — the panel remembers whether it was expanded):
 
 - **File list** — directories first, click to enter, `..` to go back, sizes shown; the current workspace is derived from the session's cwd (fallback: the workspace containing the session, then the first workspace)
-- **Preview** — click a file: text renders with line numbers + Shiki highlighting below the list (drag the divider to adjust the split; default list height 1/3); images render inline; oversized/binary files show a clear notice
-- **Copy** — select text in the preview, a floating 复制 button follows the selection; copies the raw text (line numbers excluded)
+- **Preview** — click a file: text renders with line numbers + Shiki highlighting below the list (drag the divider to adjust the split; default list height 1/3); images render inline; oversized files show a size notice and binary files show a file-type + size hint
+- **Copy** — select text in the preview; a floating **📋** button follows the selection (turning into **✓** after copying); copies the raw text (line numbers excluded)
 - **Width** — drag the column's left edge (the border between chat and the file column; a pill handle appears on hover) to resize up to half the viewport
 - **Memory** — directory and expanded state are saved per workspace on every navigation/close; entering that workspace's session restores both
 
