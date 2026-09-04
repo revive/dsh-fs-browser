@@ -210,7 +210,57 @@ function tokenizeLine(line: string, spec: TokSpec, inBlock: boolean): { out: Tok
 }
 
 // ---------------------------------------------------------------- plugin state
-export const inject = ['slots', 'layout']
+export const inject = ['slots', 'layout', 'locale']
+
+/** `worx` namespace dictionaries (zh is the key source of truth). */
+const worxZh = {
+  toggle: '文件',
+  refresh: '刷新',
+  collapse: '向右折叠',
+  closePreview: '关闭预览',
+  copy: '复制',
+  copied: '已复制',
+  loading: '读取中…',
+  loadingList: '加载中…',
+  noWorkspace: '未找到工作区/会话目录，请先打开一个工作区会话。',
+  listFail: '列目录失败',
+  tooLarge: '文件过大，无法预览',
+  binary: '二进制文件，无法预览',
+  imageFail: '图片无法显示（页面策略或加载失败），大小',
+  truncated: '内容过长，已截断显示',
+  toggleOpen: '展开文件面板',
+  toggleClose: '收起文件面板',
+} satisfies Record<string, string>
+type WorxKey = keyof typeof worxZh
+
+/** English dictionary, checked complete against the zh key set. */
+const worxEn: Record<WorxKey, string> = {
+  toggle: 'File',
+  refresh: 'Refresh',
+  collapse: 'Collapse',
+  closePreview: 'Close preview',
+  copy: 'Copy',
+  copied: 'Copied',
+  loading: 'Loading…',
+  loadingList: 'Loading…',
+  noWorkspace: 'No workspace found — open a workspace session first.',
+  listFail: 'Failed to list directory',
+  tooLarge: 'File too large to preview',
+  binary: 'Binary file — cannot preview',
+  imageFail: 'Image cannot be displayed (page policy or load failure), size',
+  truncated: 'Content too long, truncated',
+  toggleOpen: 'Open file panel',
+  toggleClose: 'Close file panel',
+}
+
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap { worx: WorxKey }
+}
+
+/** Fallback translator so missing `t` props never crash a render. */
+function tOf(props: any): (key: string) => string {
+  return typeof props.t === 'function' ? props.t : (key: string) => String(key)
+}
 
 let worxOpen = false
 let worxDir: string | null = null
@@ -338,14 +388,14 @@ function TextPreview(props: { text: string; lang: string | null }): React.ReactE
   return h('div', { className: 'worx-body-pre' }, rows)
 }
 
-function ImagePreview(props: { name: string; routeUrl: string; dataUrl: string | null; size: number | null }): React.ReactElement {
+function ImagePreview(props: { name: string; routeUrl: string; dataUrl: string | null; size: number | null; t: (key: string) => string }): React.ReactElement {
   const [src, setSrc] = React.useState(props.routeUrl)
   const [failed, setFailed] = React.useState(0)
   const onError = () => {
     if (failed === 0 && props.dataUrl) { setFailed(1); setSrc(props.dataUrl) } else { setFailed(2) }
   }
   if (failed === 2) {
-    return h('div', { className: 'worx-note' }, '图片无法显示（页面策略或加载失败），大小 ' + fmtSize(props.size))
+    return h('div', { className: 'worx-note' }, props.t('imageFail') + ' ' + fmtSize(props.size))
   }
   return h('img', { className: 'worx-img', src, alt: props.name, onError })
 }
@@ -410,6 +460,7 @@ function FilesPanel(props: any): React.ReactElement {
   const sessionsState = typeof useSessions === 'function' ? useSessions((s: any) => s) : null
   const wsItems = typeof useWorkspaces === 'function' ? useWorkspaces((s: any) => s.items) : []
   const layout = props.layout
+  const t = tOf(props)
 
   const [root, setRoot] = React.useState<string | null>(null)
   const [dir, setDir] = React.useState<string | null>(null)
@@ -458,7 +509,7 @@ function FilesPanel(props: any): React.ReactElement {
         if (typeof res.path === 'string' && res.path && res.path !== dir) setDir(res.path)
       } else {
         setEntries(null)
-        setError(res && typeof res.error === 'string' ? res.error : '列目录失败')
+        setError(res && typeof res.error === 'string' ? res.error : t('listFail'))
       }
     }).catch((err: any) => {
       if (cancelled) return
@@ -561,29 +612,34 @@ function FilesPanel(props: any): React.ReactElement {
   let previewBody: React.ReactNode = null
   if (preview) {
     if (preview.kind === 'loading') {
-      previewBody = h('div', { className: 'worx-loading' }, '读取中…')
+      previewBody = h('div', { className: 'worx-loading' }, t('loading'))
     } else if (preview.kind === 'text') {
       previewBody = h(TextPreview, { text: preview.text === null || preview.text === undefined ? '' : preview.text, lang: langOf(preview.path) })
     } else if (preview.kind === 'image') {
       const routeUrl = '/worx-file?p=' + encodeURIComponent(preview.path)
-      previewBody = h(ImagePreview, { name: preview.name, routeUrl, dataUrl: preview.dataUrl || null, size: preview.size || null })
+      previewBody = h(ImagePreview, { name: preview.name, routeUrl, dataUrl: preview.dataUrl || null, size: preview.size || null, t })
     } else if (preview.kind === 'too-large') {
-      previewBody = h('div', { className: 'worx-note' }, '文件过大，无法预览（' + fmtSize(preview.size) + '）')
+      previewBody = h('div', { className: 'worx-note' }, t('tooLarge') + '（' + fmtSize(preview.size) + '）')
     } else if (preview.kind === 'binary') {
-      previewBody = h('div', { className: 'worx-note' }, '二进制文件，无法预览（' + fmtSize(preview.size) + '）')
+      const fileTypeExt = (() => {
+        const m = preview.path.match(/\.([a-z0-9]+)(\?.*)?$/i)
+        return m ? m[1].toUpperCase() : ''
+      })()
+      previewBody = h('div', { className: 'worx-note' },
+        t('binary') + '（' + (fileTypeExt ? fileTypeExt + ' · ' : '') + fmtSize(preview.size) + '）')
     } else if (preview.kind === 'error') {
       previewBody = h('div', { className: 'worx-err' }, preview.error)
     }
     if (preview.truncated) {
-      previewBody = h('div', null, previewBody, h('div', { className: 'worx-note' }, '（内容过长，已截断显示）'))
+      previewBody = h('div', null, previewBody, h('div', { className: 'worx-note' }, t('truncated')))
     }
   }
 
   const body: React.ReactNode[] = []
   if (dir === null) {
-    body.push(h('div', { className: 'worx-note' }, '未找到工作区/会话目录，请先打开一个工作区会话。'))
+    body.push(h('div', { className: 'worx-note' }, t('noWorkspace')))
   } else if (loading) {
-    body.push(h('div', { className: 'worx-loading' }, '加载中…'))
+    body.push(h('div', { className: 'worx-loading' }, t('loadingList')))
   } else if (error) {
     body.push(h('div', { className: 'worx-err' }, error))
   } else {
@@ -605,26 +661,28 @@ function FilesPanel(props: any): React.ReactElement {
         h('div', { className: 'worx-preview-head' },
           h('span', { className: 'worx-name' }, preview.name),
           h('span', { className: 'worx-size' }, preview.kind === 'loading' ? '' : fmtSize(preview.size)),
-          h('button', { className: 'worx-btn', onClick: () => setPreview(null) }, '×'),
+          h('button', { className: 'worx-btn', title: t('closePreview'), onClick: () => setPreview(null) }, '×'),
         ),
         previewBody,
         copyBox ? h('button', {
           key: 'worx-copy',
           className: copied ? 'worx-copy worx-copy-on' : 'worx-copy',
+          title: copied ? t('copied') : t('copy'),
+          'aria-label': copied ? t('copied') : t('copy'),
           style: { left: copyBox.x, top: copyBox.y },
           onMouseDown: (e) => e.preventDefault(),
           onClick: doCopy,
-        }, copied ? '已复制 ✓' : '复制') : null,
+        }, copied ? '✓' : '📋') : null,
       ) : null,
     )
   }
 
   return h('div', { className: 'worx-col' },
     h('div', { className: 'worx-head' },
-      h('span', { className: 'worx-title' }, '📁 文件'),
+      h('span', { className: 'worx-title' }, '📁 ' + t('toggle')),
       h('span', { className: 'worx-path' }, dir || ''),
-      h('button', { className: 'worx-btn', title: '刷新', onClick: () => setTick((t) => t + 1) }, '刷新'),
-      h('button', { className: 'worx-btn', title: '向右折叠', onClick: () => { setWorxOpen(false); if (layout) layout.closeDetails(); saveWorxState(call, root) } }, '⏴'),
+      h('button', { className: 'worx-btn', title: t('refresh'), onClick: () => setTick((tick) => tick + 1) }, t('refresh')),
+      h('button', { className: 'worx-btn', title: t('collapse'), onClick: () => { setWorxOpen(false); if (layout) layout.closeDetails(); saveWorxState(call, root) } }, '⏴'),
     ),
     h('div', { className: 'worx-body', ref: bodyRef }, body),
   )
@@ -648,6 +706,7 @@ function ToggleButton(props: any): React.ReactElement {
   const root = deriveRoot(sessionsState, wsItems, sessionId)
   const currentSid = sessionsState ? sessionsState.current : undefined
   const layout = props.layout
+  const t = tOf(props)
 
   React.useEffect(() => {
     if (currentSid === undefined) return
@@ -666,7 +725,7 @@ function ToggleButton(props: any): React.ReactElement {
 
   return h('button', {
     className: open ? 'worx-toggle worx-toggle-on' : 'worx-toggle',
-    title: open ? '收起文件面板' : '展开文件面板',
+    title: open ? t('toggleClose') : t('toggleOpen'),
     onClick: () => {
       if (open) {
         setWorxOpen(false)
@@ -677,7 +736,7 @@ function ToggleButton(props: any): React.ReactElement {
       }
       saveWorxState(call, root)
     },
-  }, '📁 文件')
+  }, '📁 ' + t('toggle'))
 }
 
 const h = React.createElement
@@ -725,17 +784,19 @@ export function apply(ctx: any): void {
     return () => { tag.remove() }
   })
 
+  ctx.effect(() => ctx.locale.register('worx', { zh: worxZh, en: worxEn }), 'dsh-fs-browser: dictionaries')
+
   const layout = ctx.layout
   if (!layout) return
   const fileProps = (props: any) => Object.assign({}, props, { layout })
 
   ctx.slots.inject('details', () => ctx.slots.register(
-    { name: 'details', priority: -100 },
+    { name: 'details', priority: -100, locale: 'worx' },
     (props: any) => h(FilesPanel, fileProps(props)),
   ))
 
   ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register(
-    { name: 'conversation.session.header.utilities', id: 'worx', order: 30, label: '文件' },
+    { name: 'conversation.session.header.utilities', id: 'worx', order: 30, label: () => ctx.locale.bind('worx')('toggle'), locale: 'worx' },
     (props: any) => h(ToggleButton, fileProps(props)),
   ))
 }
