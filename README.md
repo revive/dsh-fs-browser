@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4b32c3)](https://github.com/deepseek-ai/deepseek-harness)
+[![npm](https://img.shields.io/npm/v/dsh-fs-browser?color=cb3837)](https://www.npmjs.com/package/dsh-fs-browser)
 
 [简体中文](README.zh-CN.md)
 
@@ -35,6 +36,14 @@ dsh --profile <name> --dump-config    # look for "# == dsh-fs-browser"
 ```
 
 > Installing a bundle does **not** hot-mount into a running GUI: bundle layers are composed at boot (HMR hot-applies only patch files), so restart the GUI process after `dsh plugin add`. After the restart, the session header shows the 📁 文件 toggle.
+
+### Option A′: install straight from npm
+
+If `dsh-fs-browser` is [published on npm](https://www.npmjs.com/package/dsh-fs-browser), `dsh` resolves the package from the registry automatically — same bundle semantics, no tarball download:
+
+```sh
+dsh plugin --profile <name> add dsh-fs-browser
+```
 
 ### Option B: install from a source checkout
 
@@ -138,10 +147,16 @@ dsh-fs-browser/
 
 The package is shaped as a dsh **bundle** — `dsh plugin --profile <name> add dsh-fs-browser` installs it and joins the profile's bundle layers. `peerDependencies` stays minimal (`react`, `@deepseek-ai/dsh-storage-domain`, `zod`): the two runtime packages resolve from the installation's shared flat fallback (`$DSH_HOME/profiles/node_modules`), and the browser half inlines its own Shiki.
 
-**Every GitHub release attaches the packed tarball.** The included GitHub Action (`.github/workflows/release.yml`, on `v*` tags) makes this automatic: push a `v<version>` tag, and the workflow checks out the tag, sets `package.json` to the tag version, builds the browser bundle and host half, packs `dsh-fs-browser-<version>.tgz`, creates (or updates) the release and uploads the tarball — no local build required.
+**Every GitHub release attaches the packed tarball.** The included GitHub Action (`.github/workflows/release.yml`, on `v*` tags) makes this automatic: push a `v<version>` tag, and the workflow checks out the tag, verifies it matches the committed `package.json` version, builds the browser bundle and host half, packs `dsh-fs-browser-<version>.tgz`, creates (or updates) the release and uploads the tarball — no local build required.
 
 ```sh
 git tag v0.1.1 && git push origin v0.1.1   # workflow builds + releases dsh-fs-browser-0.1.1.tgz
+```
+
+**npm**: the same tarball contents are published to [npm](https://www.npmjs.com/package/dsh-fs-browser) (`npm publish`). Once published, users install the bundle straight from the registry (see Installation Option A′):
+
+```sh
+dsh plugin --profile <name> add dsh-fs-browser
 ```
 
 Locally, the same steps are `pnpm build && pnpm pack`. Users install the tarball with:

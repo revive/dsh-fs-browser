@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4b32c3)](https://github.com/deepseek-ai/deepseek-harness)
+[![npm](https://img.shields.io/npm/v/dsh-fs-browser?color=cb3837)](https://www.npmjs.com/package/dsh-fs-browser)
 
 [English](README.md)
 
@@ -35,6 +36,14 @@ dsh --profile <name> --dump-config    # 查找 "# == dsh-fs-browser"
 ```
 
 > 安装 bundle **不会**热挂载进正在运行的 GUI（bundle 分层在启动时组合，HMR 只热应用 patch 文件）：`dsh plugin add` 之后请重启 GUI。重启后会话头部出现「📁 文件」开关。
+
+### 方式 A′：从 npm 直接安装
+
+`dsh-fs-browser` 已[发布到 npm](https://www.npmjs.com/package/dsh-fs-browser) 后，`dsh` 会直接从 registry 解析该包——同样的 bundle 语义，无需下载 tarball：
+
+```sh
+dsh plugin --profile <name> add dsh-fs-browser
+```
 
 ### 方式 B：从源码检出安装
 
@@ -138,10 +147,16 @@ dsh-fs-browser/
 
 包按 dsh **bundle** 形态组织——用户 `dsh plugin --profile <name> add dsh-fs-browser` 即可安装并进入 profile 的 bundle 分层。`peerDependencies` 保持极简（`react`、`@deepseek-ai/dsh-storage-domain`、`zod`）：这两个运行时包从安装环境的共享扁平回退（`$DSH_HOME/profiles/node_modules`）解析，浏览器半自含 Shiki。
 
-**每个 GitHub release 都附带打包 tarball**。仓库内置的 GitHub Action（`.github/workflows/release.yml`，在 `v*` 标签时触发）使其全自动：推送 `v<版本>` 标签后，工作流会检出该标签、把 `package.json` 版本设为标签版本、云端构建浏览器包与 Host 半、打包 `dsh-fs-browser-<version>.tgz`、创建（或更新）release 并上传 tarball——无需本地构建。
+**每个 GitHub release 都附带打包 tarball**。仓库内置的 GitHub Action（`.github/workflows/release.yml`，在 `v*` 标签时触发）使其全自动：推送 `v<版本>` 标签后，工作流会检出该标签、校验其与已提交的 `package.json` 版本一致、云端构建浏览器包与 Host 半、打包 `dsh-fs-browser-<version>.tgz`、创建（或更新）release 并上传 tarball——无需本地构建。
 
 ```sh
 git tag v0.1.1 && git push origin v0.1.1   # 工作流自动产出 dsh-fs-browser-0.1.1.tgz release
+```
+
+**npm**：同样的 tarball 内容发布到 [npm](https://www.npmjs.com/package/dsh-fs-browser)（`npm publish`）。发布后用户可直接从 registry 安装（见安装方式 A′）：
+
+```sh
+dsh plugin --profile <name> add dsh-fs-browser
 ```
 
 本地等价步骤为 `pnpm build && pnpm pack`。用户安装 tarball：
