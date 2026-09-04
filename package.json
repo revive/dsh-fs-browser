@@ -1,6 +1,6 @@
 {
   "name": "dsh-fs-browser",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "DSH workspace file browser: an embedded right-side file column sharing the frame with the conversation — file list, Shiki-powered text preview with line numbers, image preview, copy-on-select, and per-workspace remembered state.",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
