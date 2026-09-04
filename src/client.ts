@@ -278,11 +278,33 @@ function fmtSize(n: number | null | undefined): string {
   return (n / (1024 * 1024)).toFixed(1) + ' MB'
 }
 function joinPath(base: string, name: string): string {
-  return base.endsWith('/') ? base + name : base + '/' + name
+  if (base.endsWith('/') || base.endsWith('\\')) return base + name
+  const sep = base.indexOf('\\') !== -1 ? '\\' : '/'
+  return base + sep + name
 }
+
+/** Index of the last path separator ('/' or '\\'), or -1. */
+function lastSepIndex(p: string): number {
+  return Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'))
+}
+
 function parentPath(p: string): string {
+  if (!p) return p
+  const win = p.indexOf('\\') !== -1
+  if (win) {
+    // Drive root (C:\ or C:/) stays put; there is no parent above it.
+    if (/^[A-Za-z]:[\\/]?$/.test(p)) return p
+    const i = lastSepIndex(p)
+    if (i < 0) return p
+    const parent = p.slice(0, i)
+    // 'C:' alone is not a directory — normalize to the drive root 'C:\'.
+    if (/^[A-Za-z]:$/.test(parent)) return parent + '\\'
+    return parent
+  }
+  if (p === '/') return p
   const i = p.lastIndexOf('/')
-  return i <= 0 ? '/' : p.slice(0, i)
+  if (i <= 0) return '/'
+  return p.slice(0, i)
 }
 
 // ---------------------------------------------------------------- components

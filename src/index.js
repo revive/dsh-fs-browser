@@ -186,8 +186,9 @@ async function migrateLegacyState(ctx, domain) {
       if (typeof root !== 'string' || !root) continue
       const key = await stateKey(ctx, root)
       if (table.get(key) !== undefined) continue
+      const legacySep = root.indexOf('\\') !== -1 ? '\\' : '/'
       try {
-        const target = await ctx.fs.resolve(root + '/' + LEGACY_STATE_FILE)
+        const target = await ctx.fs.resolve(root + legacySep + LEGACY_STATE_FILE)
         const text = await ctx.fs.readText(target)
         const data = JSON.parse(text)
         if (data && typeof data.dir === 'string') {
